@@ -1,11 +1,12 @@
 <launch>
-<arg name="use_image_transport" default="true"/>
-<arg name="pub_disparity_img" default="true"/>
-<arg name="pub_disparity" default="true"/>
-<arg name="pub_imu" default="true"/>
-<arg name="time_sync" default="true"/>
+  <arg name="use_image_transport" default="true"/>
+  <arg name="pub_disparity_img" default="true"/>
+  <arg name="pub_disparity" default="true"/>
+  <arg name="pub_imu" default="true"/>
+  <arg name="time_sync" default="true"/>
+  <arg name="img_pub_intervals" default="2"/>
 
-<node pkg="nodelet" type="nodelet" name="seeker_node" 
+  <node pkg="nodelet" type="nodelet" name="seeker_node"
         args="standalone seeker/SeekRosNode"
         output="screen">
     <param name="use_image_transport" value="$(arg use_image_transport)"/>
@@ -14,6 +15,7 @@
     <param name="pub_imu" value="$(arg pub_imu)"/>
     <param name="time_sync" value="$(arg time_sync)"/>
     <param name="imu_link" value="imu"/>
-</node>
+    <param name="img_pub_intervals" value="$(arg img_pub_intervals)"/>
+  </node>
 
 </launch>

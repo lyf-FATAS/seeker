@@ -8,6 +8,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <stereo_msgs/DisparityImage.h>
+#include <Eigen/Dense>
 
 class SeekRosNodeimpl {
 public:
@@ -22,6 +23,14 @@ public:
         private_nh_.param("time_sync", time_sync_, true);
         private_nh_.param("imu_link", imu_link_, std::string("imu_link"));
         private_nh_.param("imu_topic", imu_topic_, std::string("imu_data_raw"));
+        private_nh_.param("img_pub_intervals", img_pub_intervals_, 1);
+
+        // imu w.r.t. base_link
+        imu_wrt_base_ << -1,  0,  0,
+                          0, -1,  0,
+                          0,  0,  1;
+
+        img_pub_cnt_ = 0;
 
         // 初始化image_transport
         if (use_image_transport_) {
@@ -76,17 +85,17 @@ public:
             if (use_image_transport_) {
                 image_pubs_it_.push_back(it_->advertise(image_topics[i], 1));
             } else {
-                image_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(image_topics[i], 10));
+                image_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(image_topics[i], 1));
             }
         }
 
         // 深度和视差发布者
         for (size_t i = 0; i < sdev.dev_info.depth_camera_number; ++i) {
             if (pub_disparity_img_) {
-                depth_pubs_.push_back(nh_.advertise<sensor_msgs::Image>(depth_topics[i], 10));
+                depth_pubs_.push_back(nh_.advertise<sensor_msgs::Image>(depth_topics[i], 1));
             }
             if (pub_disparity_) {
-                disparity_pubs_.push_back(nh_.advertise<stereo_msgs::DisparityImage>(disparity_topics[i], 10));
+                disparity_pubs_.push_back(nh_.advertise<stereo_msgs::DisparityImage>(disparity_topics[i], 1));
             }
         }
 
@@ -165,13 +174,35 @@ private:
             imu_msg.header.stamp = ros::Time(header.sec, header.nsec);
             imu_msg.header.frame_id = imu_link_;
             
-            imu_msg.angular_velocity.x = event.event.sensor_custom.angular_velocity_x;
-            imu_msg.angular_velocity.y = event.event.sensor_custom.angular_velocity_y;
-            imu_msg.angular_velocity.z = event.event.sensor_custom.angular_velocity_z;
+            // 将IMU数据转换为 w.r.t. base_link 的坐标系
+            Eigen::Vector3d angular_velocity(
+                event.event.sensor_custom.angular_velocity_x,
+                event.event.sensor_custom.angular_velocity_y,
+                event.event.sensor_custom.angular_velocity_z
+            );
+            Eigen::Vector3d linear_acceleration(
+                event.event.sensor_custom.linear_acceleration_x,
+                event.event.sensor_custom.linear_acceleration_y,
+                event.event.sensor_custom.linear_acceleration_z
+            );
+            Eigen::Vector3d angular_velocity_wrt_base = imu_wrt_base_ * angular_velocity;
+            Eigen::Vector3d linear_acceleration_wrt_base = imu_wrt_base_ * linear_acceleration;
 
-            imu_msg.linear_acceleration.x = event.event.sensor_custom.linear_acceleration_x;
-            imu_msg.linear_acceleration.y = event.event.sensor_custom.linear_acceleration_y;
-            imu_msg.linear_acceleration.z = event.event.sensor_custom.linear_acceleration_z;
+            imu_msg.angular_velocity.x = angular_velocity_wrt_base.x();
+            imu_msg.angular_velocity.y = angular_velocity_wrt_base.y();
+            imu_msg.angular_velocity.z = angular_velocity_wrt_base.z();
+
+            imu_msg.linear_acceleration.x = linear_acceleration_wrt_base.x();
+            imu_msg.linear_acceleration.y = linear_acceleration_wrt_base.y();
+            imu_msg.linear_acceleration.z = linear_acceleration_wrt_base.z();
+            
+            // imu_msg.angular_velocity.x = event.event.sensor_custom.angular_velocity_x;
+            // imu_msg.angular_velocity.y = event.event.sensor_custom.angular_velocity_y;
+            // imu_msg.angular_velocity.z = event.event.sensor_custom.angular_velocity_z;
+
+            // imu_msg.linear_acceleration.x = event.event.sensor_custom.linear_acceleration_x;
+            // imu_msg.linear_acceleration.y = event.event.sensor_custom.linear_acceleration_y;
+            // imu_msg.linear_acceleration.z = event.event.sensor_custom.linear_acceleration_z;
 
             imu_pub_.publish(imu_msg);
         }
@@ -185,21 +216,27 @@ private:
         header.stamp = ros::Time(eheader.sec, eheader.nsec);
         header.seq = eheader.seq;
 
-        for (int i = 0; i < cam_num; i++) {
-            header.frame_id = "cam" + std::to_string(i);;  // 可选：设置帧ID，比如相机的参考坐标系
-            sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(header, "bgr8", frame(cv::Rect(0, i * h, w, h))).toImageMsg();
-            if (use_image_transport_) {
-                image_pubs_it_[i].publish(img_msg);
-            } else {
-                image_pubs_ros_[i].publish(img_msg);
+        if ((img_pub_cnt_ % img_pub_intervals_) == 0)
+        {
+            for (int i = 0; i < cam_num; i++) {
+                header.frame_id = "cam" + std::to_string(i);;  // 可选：设置帧ID，比如相机的参考坐标系
+                sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(header, "bgr8", frame(cv::Rect(0, i * h, w, h))).toImageMsg();
+                if (use_image_transport_) {
+                    image_pubs_it_[i].publish(img_msg);
+                } else {
+                    image_pubs_ros_[i].publish(img_msg);
+                }
             }
+
+            img_pub_cnt_ = 0;
         }
+        img_pub_cnt_ += 1;
     }
 
     void onMjpeg(event_header_t& pheader, const uint8_t* data, int len) {
         cv::Mat frame = cv::imdecode(
-            cv::Mat(1, len, CV_8UC1, 
-                const_cast<uint8_t*>(data)), 
+        cv::Mat(1, len, CV_8UC1, 
+            const_cast<uint8_t*>(data)), 
             cv::IMREAD_COLOR
         );
         onImage(pheader, frame);
@@ -232,6 +269,10 @@ private:
     bool time_sync_;
     std::string imu_link_;
     std::string imu_topic_;
+    int img_pub_intervals_;
+    int img_pub_cnt_;
+
+    Eigen::Matrix3d imu_wrt_base_;  // IMU w.r.t. base_link 的变换矩阵
 };
 
 #include <nodelet/nodelet.h>
