@@ -1,3 +1,7 @@
+## 售后支持请添加微信
+
+微信号：ShiYuan_Seeker
+
 ![](https://img.shields.io/badge/ROS-Noetic-brightgreen)  
 ![](https://img.shields.io/badge/LICENSE-MIT-green.svg)
 
@@ -191,4 +195,8 @@ roslaunch seeker 5point_cloud.launch
 
 > _@深圳市视元智能科技有限公司_
 >
+
+## 售后支持请添加微信
+
+微信号：ShiYuan_Seeker
 
