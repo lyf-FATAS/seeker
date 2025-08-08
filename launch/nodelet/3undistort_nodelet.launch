@@ -41,6 +41,8 @@
     <param name="pub_imu" value="$(arg pub_imu)"/>
     <param name="time_sync" value="$(arg time_sync)"/>
     <param name="imu_link" value="imu"/>
+    <param name="publish_bgra" value="true"/>
+    <param name="publish_gray" value="false"/>
 </node>
 
 <node pkg="nodelet" type="nodelet" name="front_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">

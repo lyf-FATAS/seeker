@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   cv_bridge
 )
+find_package(vpi 2.2 REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -25,6 +26,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   include
+  /usr/local/cuda/include
+  /usr/src/jetson_multimedia_api/include/
+  /usr/src/jetson_multimedia_api/include/libjpeg-8b
+  /usr/include/libdrm
 )
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86")
@@ -33,19 +38,30 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   set(LIB_DIR "libs/arm64")
 endif()
 
-link_directories(${LIB_DIR})
+link_directories(${LIB_DIR}
+  /usr/local/cuda-11.4/lib64/
+  /usr/lib/aarch64-linux-gnu/tegra
+)
+
+file(GLOB NVIDIA_SOURCE "/usr/src/jetson_multimedia_api/samples/common/classes/*.cpp")
+list(FILTER NVIDIA_SOURCE EXCLUDE REGEX "NvEglRenderer\\.cpp$")
 
 # 生成共享库
 add_library(seeker_nodelet SHARED
   src/seeker_nodelet.cpp
+  ${NVIDIA_SOURCE}
 )
 
 # 链接依赖库
 target_link_libraries(seeker_nodelet
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  quad_undistort
+  vpi
   seeker
   usb-1.0
+  pthread nvv4l2 nvbufsurface nvbufsurftransform nvjpeg nvosd drm
+  cuda cudart vulkan
 )
 
 add_executable(seeker_node src/seeker_node.cpp)

@@ -1,9 +1,12 @@
 <launch>
-<arg name="use_image_transport" default="true"/>
+<arg name="use_image_transport" default="false"/>
 <arg name="pub_disparity_img" default="true"/>
 <arg name="pub_disparity" default="true"/>
 <arg name="pub_imu" default="true"/>
 <arg name="time_sync" default="true"/>
+<arg name="config" default="seeker_omni_depth"/>
+
+<arg name="cali_path" default="$(find seeker)/config/$(arg config)/cali"/>
 
 <node pkg="nodelet" type="nodelet" name="seeker_node" 
         args="standalone seeker/SeekRosNode"
@@ -14,6 +17,11 @@
     <param name="pub_imu" value="$(arg pub_imu)"/>
     <param name="time_sync" value="$(arg time_sync)"/>
     <param name="imu_link" value="imu"/>
+    <param name="cali_path" value="$(arg cali_path)"/>
+    <param name="publish_bgra" value="true"/>
+    <param name="publish_gray" value="false"/>
+    <param name="undistort_color" value="true"/>
+    <param name="undistort_gray" value="false"/>
 </node>
 
 </launch>
