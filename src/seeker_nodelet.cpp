@@ -83,19 +83,19 @@ public:
         // 图像发布者
         for (size_t i = 0; i < sdev.dev_info.rgb_camera_number; ++i) {
             if (use_image_transport_) {
-                image_pubs_it_.push_back(it_->advertise(image_topics[i], 1));
+                image_pubs_it_.push_back(it_->advertise(image_topics[i], 10));
             } else {
-                image_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(image_topics[i], 1));
+                image_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(image_topics[i], 10));
             }
         }
 
         // 深度和视差发布者
         for (size_t i = 0; i < sdev.dev_info.depth_camera_number; ++i) {
             if (pub_disparity_img_) {
-                depth_pubs_.push_back(nh_.advertise<sensor_msgs::Image>(depth_topics[i], 1));
+                depth_pubs_.push_back(nh_.advertise<sensor_msgs::Image>(depth_topics[i], 10));
             }
             if (pub_disparity_) {
-                disparity_pubs_.push_back(nh_.advertise<stereo_msgs::DisparityImage>(disparity_topics[i], 1));
+                disparity_pubs_.push_back(nh_.advertise<stereo_msgs::DisparityImage>(disparity_topics[i], 10));
             }
         }
 

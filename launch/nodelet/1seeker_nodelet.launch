@@ -1,5 +1,5 @@
 <launch>
-  <arg name="use_image_transport" default="true"/>
+  <arg name="use_image_transport" default="false"/>
   <arg name="pub_disparity_img" default="true"/>
   <arg name="pub_disparity" default="true"/>
   <arg name="pub_imu" default="true"/>

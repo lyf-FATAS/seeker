@@ -3,19 +3,19 @@
   <arg name="front_right_camera_name" default="cam1"/>
   <arg name="back_right_camera_name" default="cam2"/>
   <arg name="back_left_camera_name" default="cam3"/>
-  <arg name="scale" default="1.0"/>
+  <arg name="scale" default="0.1"/>
   <arg name="process_every_nth_frame" default="1"/>
   <arg name="publish_tf" default="true"/>
   <arg name="respawn" default="false"/>
   <arg name="config" default="seeker_omni_depth"/>
   <arg name="standalone" default="false"/>
   <arg name="manager" default="seeker_manager"/>
-  <arg name="use_image_transport" default="true"/>
+  <arg name="use_image_transport" default="false"/>
   <arg name="pub_disparity_img" default="true"/>
   <arg name="pub_disparity" default="true"/>
   <arg name="pub_imu" default="true"/>
   <arg name="time_sync" default="true"/>
-  <arg name="img_pub_intervals" default="1"/>
+  <arg name="img_pub_intervals" default="2"/>
 
   <arg name="stereo_params_camchain" default="$(find seeker)/config/$(arg config)/kalibr_cam_chain.yaml"/>
 
@@ -52,19 +52,18 @@
     <param name="scale" value="$(arg scale)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
+
     <remap from="raw/first/image" to="/fisheye/left/image_raw"/>
     <remap from="raw/second/image" to="/fisheye/right/image_raw"/>
+    <remap from="raw/first/camera_info" to="/front/raw/first/camera_info"/>
+    <remap from="raw/second/camera_info" to="/front/raw/second/camera_info"/>
 
     <param name="first_output_frame" value="camfl"/>
     <param name="second_output_frame" value="camfr"/>
-
     <remap from="rect/first/camera_info" to="/front/left/camera_info"/>
     <remap from="rect/second/camera_info" to="/front/right/camera_info"/>
     <remap from="rect/first/image" to="/front/left/image_raw"/>
     <remap from="rect/second/image" to="/front/right/image_raw"/>
-
-    <remap from="raw/first/camera_info" to="/front/raw/first/camera_info"/>
-    <remap from="raw/second/camera_info" to="/front/raw/second/camera_info"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="right_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
@@ -75,19 +74,18 @@
     <param name="scale" value="$(arg scale)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
+
     <remap from="raw/first/image" to="/fisheye/right/image_raw"/>
     <remap from="raw/second/image" to="/fisheye/bright/image_raw"/>
+    <remap from="raw/first/camera_info" to="/right/raw/first/camera_info"/>
+    <remap from="raw/second/camera_info" to="/right/raw/second/camera_info"/>
 
     <param name="first_output_frame" value="camrl"/>
     <param name="second_output_frame" value="camrr"/>
-
     <remap from="rect/first/camera_info" to="/right/left/camera_info"/>
     <remap from="rect/second/camera_info" to="/right/right/camera_info"/>
     <remap from="rect/first/image" to="/right/left/image_raw"/>
     <remap from="rect/second/image" to="/right/right/image_raw"/>
-
-    <remap from="raw/first/camera_info" to="/right/raw/first/camera_info"/>
-    <remap from="raw/second/camera_info" to="/right/raw/second/camera_info"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="left_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
@@ -98,19 +96,18 @@
     <param name="scale" value="$(arg scale)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
+
     <remap from="raw/first/image" to="/fisheye/bleft/image_raw"/>
     <remap from="raw/second/image" to="/fisheye/left/image_raw"/>
+    <remap from="raw/first/camera_info" to="/left/raw/first/camera_info"/>
+    <remap from="raw/second/camera_info" to="/left/raw/second/camera_info"/>
 
     <param name="first_output_frame" value="camll"/>
     <param name="second_output_frame" value="camlr"/>
-
     <remap from="rect/first/camera_info" to="/left/left/camera_info"/>
     <remap from="rect/second/camera_info" to="/left/right/camera_info"/>
     <remap from="rect/first/image" to="/left/left/image_raw"/>
     <remap from="rect/second/image" to="/left/right/image_raw"/>
-
-    <remap from="raw/first/camera_info" to="/left/raw/first/camera_info"/>
-    <remap from="raw/second/camera_info" to="/left/raw/second/camera_info"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="back_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
@@ -121,19 +118,18 @@
     <param name="scale" value="$(arg scale)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
+
     <remap from="raw/first/image" to="/fisheye/bright/image_raw"/>
     <remap from="raw/second/image" to="/fisheye/bleft/image_raw"/>
+    <remap from="raw/first/camera_info" to="/back/raw/first/camera_info"/>
+    <remap from="raw/second/camera_info" to="/back/raw/second/camera_info"/>
 
     <param name="first_output_frame" value="cambl"/>
     <param name="second_output_frame" value="cambr"/>
-
     <remap from="rect/first/camera_info" to="/back/left/camera_info"/>
     <remap from="rect/second/camera_info" to="/back/right/camera_info"/>
     <remap from="rect/first/image" to="/back/left/image_raw"/>
     <remap from="rect/second/image" to="/back/right/image_raw"/>
-
-    <remap from="raw/first/camera_info" to="/back/raw/first/camera_info"/>
-    <remap from="raw/second/camera_info" to="/back/raw/second/camera_info"/>
   </node>
 
 </launch>
