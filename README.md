@@ -78,7 +78,7 @@ roslaunch seeker 1seeker_nodelet.launch
 确保模块可以正常使用，usb访问没有权限问题，执行以下命令，从模块读取标定参数并生成配置文件：
 
 ```bash
-python3 ~/catkin_ws/src/seeker/scripts/1get_kalibr_info.py
+python3 ~/catkin_ws/src/seeker1/scripts/1get_kalibr_info.py
 ```
 
 + ‌**输出文件路径**：生成的标定参数文件默认保存至`/tmp/kalibr_cam_chain.yaml`
@@ -88,7 +88,7 @@ python3 ~/catkin_ws/src/seeker/scripts/1get_kalibr_info.py
 将生成的标定文件复制到目标配置目录：
 
 ```plain
-cp /tmp/kalibr_cam_chain.yaml ~/catkin_ws/src/seeker/config/seeker_omni_depth/
+cp /tmp/kalibr_cam_chain.yaml ~/catkin_ws/src/seeker1/config/seeker_omni_depth/
 ```
 
 + ‌**依赖关系**：后续拼接、解畸变等流程需基于此文件进行参数初始化‌。
@@ -104,7 +104,7 @@ roslaunch seeker 1seeker_nodelet.launch
 
 **rqt_gui 导入**
 
-rosrun rqt_gui rqt_gui然后在perspectives里面点击import一个一个导入 ~/catkin_ws/src/seeker/gui的全部gui文件。然后perspectives选择seeker。查看原始图像和视差图。
+rosrun rqt_gui rqt_gui然后在perspectives里面点击import一个一个导入 ~/catkin_ws/src/seeker1/gui的全部gui文件。然后perspectives选择seeker。查看原始图像和视差图。
 
 ![img](doc/img/image0.jpg)
 
@@ -194,6 +194,38 @@ roslaunch seeker 5point_cloud.launch
 若要查看话题/left/points2，Fixed Frame调整为/depth3
 
 ![img](doc/img/pointcloud.jpeg)
+
+## 📂 NVIDIA JETSO ONIN 改动
+
+切换到jetson分支，git checkout jetson
+
+如果需要解畸变8张图像，需要下面准备：
+
+```
+python 89generate_cali.py 脚本1跑出的标定文件
+例如：
+python 89generate_cali.py ~/catkin_ws/src/seeker1/config/seeker_omni_depth/kalibr_cam_chain.yaml
+
+然后会生成/tmp/cali 放到 ~/catkin_ws/src/seeker1/config/seeker_omni_depth 路径里面
+```
+
+图像可以自行修改代码进行裁剪：/recitfy从上到下对应如下：
+
+```
+/left/right
+/front/left
+/front/right
+/right/left
+/right/right
+/back/left
+/back/right
+/left/left
+```
+
+运行ros1使用1seeker_nodelet.launch
+
+运行ros2使用1seeker.launch.py
+
 
 > _@深圳市视元智能科技有限公司_
 >
