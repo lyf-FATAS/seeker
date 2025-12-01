@@ -142,6 +142,12 @@ public:
             "/fisheye/gray/bright/image_raw",
             "/fisheye/gray/bleft/image_raw",
         };
+        const std::vector<std::string> rect_cat_topics = {
+            "/rect_cat/left/image_raw",
+            "/rect_cat/right/image_raw",
+            "/rect_cat/bright/image_raw",
+            "/rect_cat/bleft/image_raw",
+        };
         const std::vector<std::string> depth_topics = {
             "/front/disparity/image_raw",
             "/right/disparity/image_raw",
@@ -163,9 +169,6 @@ public:
             } else {
                 if (publish_bgra_) {
                     image_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(image_topics[i], 10));
-                    if (undistort_color_) {
-                        image_rectify_pubs_ros_ = nh_.advertise<sensor_msgs::Image>("/rectify", 10);
-                    }
                 }
                 if (publish_gray_) {
                     image_gray_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(gray_topics[i], 10));
@@ -173,6 +176,12 @@ public:
                         image_rectify_gray_pubs_ros_ = nh_.advertise<sensor_msgs::Image>("/rectify_gray", 10);
                     }
                 }
+            }
+        }
+
+        if (!use_image_transport_ && publish_bgra_ && undistort_color_) {
+            for (const auto& topic : rect_cat_topics) {
+                image_rect_cat_pubs_ros_.push_back(nh_.advertise<sensor_msgs::Image>(topic, 10));
             }
         }
 
@@ -216,8 +225,10 @@ private:
         const int width = sdev.dev_info.depth_resolution_width;
         
         std::vector<cv::Mat> images(depth_camera_number);
+        const uint16_t* depth_ptr = reinterpret_cast<const uint16_t*>(data);
         for (int i = 0; i < depth_camera_number; i++) {
-            images.at(i) = cv::Mat(height, width, CV_16UC1, (void *)data+i*height*width*2);
+            images.at(i) = cv::Mat(height, width, CV_16UC1,
+                                   const_cast<uint16_t*>(depth_ptr + i * height * width));
         }
         std_msgs::Header header;
         header.stamp = ros::Time(pheader.sec, pheader.nsec);  // 使用当前时间作为时间戳
@@ -334,13 +345,46 @@ private:
         }
     }
 
-    void onRectiryBGRA(const event_header_t& eheader, const cv::Mat& frame) {
+    void publishRectCatBGRA(const event_header_t& eheader, const cv::Mat& frame) {
+        const int expected_cam_slices = 8;
+        if (frame.rows % expected_cam_slices != 0 || frame.cols == 0 || image_rect_cat_pubs_ros_.empty()) {
+            return;
+        }
+
+        const int single_h = frame.rows / expected_cam_slices;
+        const int single_w = frame.cols;
+
+        std::vector<cv::Mat> slices;
+        slices.reserve(expected_cam_slices);
+        for (int i = 0; i < expected_cam_slices; ++i) {
+            slices.emplace_back(frame(cv::Rect(0, i * single_h, single_w, single_h)));
+        }
+
+        std::vector<cv::Mat> cat_imgs;
+        cat_imgs.reserve(expected_cam_slices / 2);
+        for (int i = 0; i < expected_cam_slices; i += 2) {
+            cv::Mat cat;
+            cv::hconcat(slices[i], slices[i + 1], cat);
+            cat_imgs.push_back(cat);
+        }
+
         std_msgs::Header header;
         header.stamp = ros::Time(eheader.sec, eheader.nsec);
         header.seq = eheader.seq;
 
-        sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
-        image_rectify_pubs_ros_.publish(img_msg);
+        const std::vector<std::string> frame_ids = {
+            "rect_cat_left",
+            "rect_cat_right",
+            "rect_cat_bright",
+            "rect_cat_bleft"
+        };
+
+        const size_t publish_count = cat_imgs.size() < image_rect_cat_pubs_ros_.size() ? cat_imgs.size() : image_rect_cat_pubs_ros_.size();
+        for (size_t i = 0; i < publish_count; ++i) {
+            header.frame_id = i < frame_ids.size() ? frame_ids[i] : ("rect_cat_" + std::to_string(i));
+            sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(header, "bgr8", cat_imgs[i]).toImageMsg();
+            image_rect_cat_pubs_ros_[i].publish(img_msg);
+        }
     }
 
     void onRectiryGRAY(const event_header_t& eheader, const cv::Mat& frame) {
@@ -404,9 +448,9 @@ private:
                 if (undistort_color_) {
                     cv::Mat img_rectify = cv::Mat::zeros(480*8, 640, CV_8UC4);
                     undistort->undistort(frame, img_rectify);
-                    cv::Mat img_rectify2;
-                    cv::cvtColor(img_rectify, img_rectify2, cv::COLOR_BGRA2BGR);
-                    onRectiryBGRA(pheader, img_rectify2);
+                    cv::Mat img_rectify_bgr;
+                    cv::cvtColor(img_rectify, img_rectify_bgr, cv::COLOR_BGRA2BGR);
+                    publishRectCatBGRA(pheader, img_rectify_bgr);
                 }
             }
             byte_use = 0;
@@ -443,7 +487,7 @@ private:
     ros::Publisher compressed_image_pub_;
     std::vector<ros::Publisher> image_pubs_ros_;
     std::vector<ros::Publisher> image_gray_pubs_ros_;
-    ros::Publisher image_rectify_pubs_ros_;
+    std::vector<ros::Publisher> image_rect_cat_pubs_ros_;
     ros::Publisher image_rectify_gray_pubs_ros_;
     std::vector<ros::Publisher> depth_pubs_;
     std::vector<ros::Publisher> disparity_pubs_;
