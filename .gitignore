@@ -33,3 +33,4 @@
 
 config/seeker_omni_depth/kalibr_cam_chain.yaml
 config/seeker_omni_depth/kalibr_imucam_chain.yaml
+config/seeker_omni_depth/cali
