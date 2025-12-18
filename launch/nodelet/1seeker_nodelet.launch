@@ -5,6 +5,7 @@
   <arg name="pub_imu" default="false"/>
   <arg name="time_sync" default="true"/>
   <arg name="img_pub_intervals" default="2"/>
+  <arg name="rect_cat_pub_intervals" default="2"/>
   <arg name="cali_path" default="$(find seeker)/config/seeker_omni_depth/cali"/>
   <arg name="publish_bgra" default="true"/>
   <arg name="publish_gray" default="false"/>
@@ -21,6 +22,7 @@
     <param name="time_sync" value="$(arg time_sync)"/>
     <param name="imu_link" value="imu"/>
     <param name="img_pub_intervals" value="$(arg img_pub_intervals)"/>
+    <param name="rect_cat_pub_intervals" value="$(arg rect_cat_pub_intervals)"/>
     <param name="cali_path" value="$(arg cali_path)"/>
     <param name="publish_bgra" value="$(arg publish_bgra)"/>
     <param name="publish_gray" value="$(arg publish_gray)"/>

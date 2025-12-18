@@ -32,9 +32,16 @@ public:
         private_nh_.param("time_sync", time_sync_, true);
         private_nh_.param("imu_link", imu_link_, std::string("imu_link"));
         private_nh_.param("imu_topic", imu_topic_, std::string("imu_data_raw"));
-        private_nh_.param("img_pub_intervals", img_pub_intervals_, 1);
+        private_nh_.param("img_pub_intervals", img_pub_intervals_, 2);
+        private_nh_.param("rect_cat_pub_intervals", rect_cat_pub_intervals_, 2);
         std::string cali_path_;
         private_nh_.param("cali_path", cali_path_, std::string("cali_path"));
+        if (img_pub_intervals_ < 1) {
+            img_pub_intervals_ = 1;
+        }
+        if (rect_cat_pub_intervals_ < 1) {
+            rect_cat_pub_intervals_ = 1;
+        }
 
         // imu w.r.t. base_link
         imu_wrt_base_ << -1,  0,  0,
@@ -42,6 +49,7 @@ public:
                           0,  0,  1;
 
         img_pub_cnt_ = 0;
+        rect_cat_pub_cnt_ = 0;
 
         // 初始化image_transport
         if (use_image_transport_) {
@@ -409,40 +417,70 @@ private:
     }
 
     void onMjpeg(event_header_t& pheader, const uint8_t* data, int len) {
-        if ((img_pub_cnt_ % img_pub_intervals_) == 0)
-        {
-            cv::Mat jpeg_buffer(1, len, CV_8UC1, const_cast<uint8_t*>(data));
-            cv::Mat frame = cv::imdecode(jpeg_buffer, cv::IMREAD_COLOR);
-            if (frame.empty()) {
-                ROS_WARN("Failed to decode MJPEG frame with OpenCV");
-                img_pub_cnt_ = 0;
-            } else {
-                if (publish_bgra_) {
-                    onImageBGRA(pheader, frame);
-                    if (undistort_color_ && undistort_color_impl_) {
-                        cv::Mat frame_bgra;
-                        cv::cvtColor(frame, frame_bgra, cv::COLOR_BGR2BGRA);
-                        cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8UC4);
-                        undistort_color_impl_->undistort(frame_bgra, img_rectify);
-                        cv::Mat img_rectify_bgr;
-                        cv::cvtColor(img_rectify, img_rectify_bgr, cv::COLOR_BGRA2BGR);
-                        publishRectCat(pheader, img_rectify_bgr);
-                    }
-                }
-                if (publish_gray_) {
-                    cv::Mat gray_frame;
-                    cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
-                    onImageGRAY(pheader, gray_frame);
-                    if (undistort_gray_ && undistort_gray_impl_) {
-                        cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8U);
-                        undistort_gray_impl_->undistort(gray_frame, img_rectify);
-                        publishRectCatGray(pheader, img_rectify);
-                    }
-                }
-                img_pub_cnt_ = 0;
+        const bool publish_raw = (img_pub_cnt_ % img_pub_intervals_) == 0;
+        const bool publish_rect = (rect_cat_pub_cnt_ % rect_cat_pub_intervals_) == 0;
+
+        if (!publish_raw && !publish_rect) {
+            img_pub_cnt_ += 1;
+            rect_cat_pub_cnt_ += 1;
+            return;
+        }
+
+        cv::Mat jpeg_buffer(1, len, CV_8UC1, const_cast<uint8_t*>(data));
+        cv::Mat frame = cv::imdecode(jpeg_buffer, cv::IMREAD_COLOR);
+        if (frame.empty()) {
+            ROS_WARN("Failed to decode MJPEG frame with OpenCV");
+            img_pub_cnt_ = 0;
+            rect_cat_pub_cnt_ = 0;
+            img_pub_cnt_ += 1;
+            rect_cat_pub_cnt_ += 1;
+            return;
+        }
+
+        cv::Mat gray_frame;
+        const bool need_gray_frame = publish_gray_ && (publish_raw || (publish_rect && undistort_gray_ && undistort_gray_impl_));
+        if (need_gray_frame) {
+            cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
+        }
+
+        if (publish_raw) {
+            if (publish_bgra_) {
+                onImageBGRA(pheader, frame);
+            }
+            if (publish_gray_) {
+                onImageGRAY(pheader, gray_frame);
             }
         }
+
+        if (publish_rect) {
+            if (publish_bgra_ && undistort_color_ && undistort_color_impl_) {
+                cv::Mat frame_bgra;
+                cv::cvtColor(frame, frame_bgra, cv::COLOR_BGR2BGRA);
+                cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8UC4);
+                undistort_color_impl_->undistort(frame_bgra, img_rectify);
+                cv::Mat img_rectify_bgr;
+                cv::cvtColor(img_rectify, img_rectify_bgr, cv::COLOR_BGRA2BGR);
+                publishRectCat(pheader, img_rectify_bgr);
+            }
+            if (publish_gray_ && undistort_gray_ && undistort_gray_impl_) {
+                if (gray_frame.empty()) {
+                    cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
+                }
+                cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8U);
+                undistort_gray_impl_->undistort(gray_frame, img_rectify);
+                publishRectCatGray(pheader, img_rectify);
+            }
+        }
+
+        if (publish_raw) {
+            img_pub_cnt_ = 0;
+        }
+        if (publish_rect) {
+            rect_cat_pub_cnt_ = 0;
+        }
+
         img_pub_cnt_ += 1;
+        rect_cat_pub_cnt_ += 1;
     }
 
     bool onTimer(std::pair<uint64_t, uint64_t>& timer_get, std::pair<uint64_t, uint64_t>& timer_set) {
@@ -484,6 +522,8 @@ private:
     std::string imu_topic_;
     int img_pub_intervals_;
     int img_pub_cnt_;
+    int rect_cat_pub_intervals_;
+    int rect_cat_pub_cnt_;
 
     Eigen::Matrix3d imu_wrt_base_;  // IMU w.r.t. base_link 的变换矩阵
 
