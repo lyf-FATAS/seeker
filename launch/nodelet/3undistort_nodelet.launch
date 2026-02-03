@@ -3,7 +3,15 @@
   <arg name="front_right_camera_name" default="cam1"/>
   <arg name="back_right_camera_name" default="cam2"/>
   <arg name="back_left_camera_name" default="cam3"/>
-  <arg name="scale" default="0.1"/>
+  <!-- Scale factor for output focal length relative to input focal length. -->
+  <arg name="scale" default="0.2"/>
+  <arg name="output_override" default="true"/>
+  <arg name="output_fx" default="320"/>
+  <arg name="output_fy" default="320"/>
+  <arg name="output_cx" default="320"/>
+  <arg name="output_cy" default="240"/>
+  <arg name="output_width" default="640"/>
+  <arg name="output_height" default="480"/>
   <arg name="process_every_nth_frame" default="1"/>
   <arg name="publish_tf" default="true"/>
   <arg name="respawn" default="false"/>
@@ -44,6 +52,8 @@
       <param name="img_pub_intervals" value="$(arg img_pub_intervals)"/>
       <param name="publish_bgra" value="true"/>
       <param name="publish_gray" value="false"/>
+      <param name="undistort_color" value="false"/>
+      <param name="undistort_gray" value="false"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="front_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
@@ -52,6 +62,13 @@
     <param name="first_camera_namespace" value="$(arg front_left_camera_name)"/>
     <param name="second_camera_namespace" value="$(arg front_right_camera_name)"/>
     <param name="scale" value="$(arg scale)"/>
+    <param name="output_override" value="$(arg output_override)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
+    <param name="output_cx" value="$(arg output_cx)"/>
+    <param name="output_cy" value="$(arg output_cy)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -74,6 +91,13 @@
     <param name="first_camera_namespace" value="$(arg front_right_camera_name)"/>
     <param name="second_camera_namespace" value="$(arg back_right_camera_name)"/>
     <param name="scale" value="$(arg scale)"/>
+    <param name="output_override" value="$(arg output_override)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
+    <param name="output_cx" value="$(arg output_cx)"/>
+    <param name="output_cy" value="$(arg output_cy)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -96,6 +120,13 @@
     <param name="first_camera_namespace" value="$(arg back_left_camera_name)"/>
     <param name="second_camera_namespace" value="$(arg front_left_camera_name)"/>
     <param name="scale" value="$(arg scale)"/>
+    <param name="output_override" value="$(arg output_override)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
+    <param name="output_cx" value="$(arg output_cx)"/>
+    <param name="output_cy" value="$(arg output_cy)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -118,6 +149,13 @@
     <param name="first_camera_namespace" value="$(arg back_right_camera_name)"/>
     <param name="second_camera_namespace" value="$(arg back_left_camera_name)"/>
     <param name="scale" value="$(arg scale)"/>
+    <param name="output_override" value="$(arg output_override)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
+    <param name="output_cx" value="$(arg output_cx)"/>
+    <param name="output_cy" value="$(arg output_cy)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 

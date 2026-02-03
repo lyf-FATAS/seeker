@@ -142,16 +142,13 @@ def main():
 
         if 'T_cn_cnm1' not in datain['cam0']:
             datain['cam0']['T_cn_cnm1'] = getcam0_Tcn_cm1(datain, 3).tolist()
-            with open('kalibr_cam_chain.yaml', 'w+') as g:
-                ruamelyaml.dump(datain, g)
         if 'T_cam_imu' not in datain['cam2']:
             datain['cam2']['T_cam_imu'] = get_T_cam_imu(datain, 2).tolist()
-            with open('kalibr_cam_chain.yaml', 'w+') as g:
-                ruamelyaml.dump(datain, g)
         if 'T_cam_imu' not in datain['cam3']:
             datain['cam3']['T_cam_imu'] = get_T_cam_imu(datain, 3).tolist()
-            with open('kalibr_cam_chain.yaml', 'w+') as g:
-                ruamelyaml.dump(datain, g)
+
+        with open('kalibr_cam_chain.yaml', 'w+') as g:
+            ruamelyaml.dump(datain, g)
 
         generatestereoinfo(datain, dataout, 0, 1, 'front', 'cam0', 'cam1')
         generatestereoinfo(datain, dataout, 1, 2, 'right', 'cam2', 'cam3')
