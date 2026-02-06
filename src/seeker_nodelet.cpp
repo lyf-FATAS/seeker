@@ -36,6 +36,31 @@ public:
         private_nh_.param("rect_cat_pub_intervals", rect_cat_pub_intervals_, 2);
         std::string cali_path_;
         private_nh_.param("cali_path", cali_path_, std::string("cali_path"));
+        private_nh_.param("output_width", output_width_, 0);
+        private_nh_.param("output_height", output_height_, 0);
+        private_nh_.param("output_fx", output_fx_, 0);
+        private_nh_.param("output_fy", output_fy_, 0);
+
+        constexpr int kDefaultUndistortWidth = 640;
+        constexpr int kDefaultUndistortHeight = 480;
+        constexpr int kDefaultUndistortFx = 320;
+        constexpr int kDefaultUndistortFy = 320;
+
+        if (output_width_ <= 0) {
+            output_width_ = kDefaultUndistortWidth;
+        }
+        if (output_height_ <= 0) {
+            output_height_ = kDefaultUndistortHeight;
+        }
+        if (output_fx_ <= 0) {
+            output_fx_ = kDefaultUndistortFx;
+        }
+        if (output_fy_ <= 0) {
+            output_fy_ = kDefaultUndistortFy;
+        }
+
+        ROS_INFO("Undistort output params: width=%d height=%d fx=%d fy=%d",
+                 output_width_, output_height_, output_fx_, output_fy_);
         if (img_pub_intervals_ < 1) {
             img_pub_intervals_ = 1;
         }
@@ -64,10 +89,14 @@ public:
         }
         seek.open(devices[0]);
         if (undistort_color_) {
-            undistort_color_impl_ = std::make_shared<QuadUndistort>(cali_path_, QuadUndistort::Backend::VPI_BACKEND);
+            undistort_color_impl_ = std::make_shared<QuadUndistort>(
+                output_width_, output_height_ * 8, output_fx_, output_fy_,
+                cali_path_, QuadUndistort::Backend::VPI_BACKEND);
         }
         if (undistort_gray_) {
-            undistort_gray_impl_ = std::make_shared<QuadUndistort>(cali_path_, QuadUndistort::Backend::VPI_BACKEND);
+            undistort_gray_impl_ = std::make_shared<QuadUndistort>(
+                output_width_, output_height_* 8, output_fx_, output_fy_,
+                cali_path_, QuadUndistort::Backend::VPI_BACKEND);
         }
 
         // 设置回调
@@ -456,7 +485,7 @@ private:
             if (publish_bgra_ && undistort_color_ && undistort_color_impl_) {
                 cv::Mat frame_bgra;
                 cv::cvtColor(frame, frame_bgra, cv::COLOR_BGR2BGRA);
-                cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8UC4);
+                cv::Mat img_rectify = cv::Mat::zeros(output_height_ * 8, output_width_, CV_8UC4);
                 undistort_color_impl_->undistort(frame_bgra, img_rectify);
                 cv::Mat img_rectify_bgr;
                 cv::cvtColor(img_rectify, img_rectify_bgr, cv::COLOR_BGRA2BGR);
@@ -466,7 +495,7 @@ private:
                 if (gray_frame.empty()) {
                     cv::cvtColor(frame, gray_frame, cv::COLOR_BGR2GRAY);
                 }
-                cv::Mat img_rectify = cv::Mat::zeros(480 * 8, 640, CV_8U);
+                cv::Mat img_rectify = cv::Mat::zeros(output_height_ * 8, output_width_, CV_8U);
                 undistort_gray_impl_->undistort(gray_frame, img_rectify);
                 publishRectCatGray(pheader, img_rectify);
             }
@@ -524,6 +553,10 @@ private:
     int img_pub_cnt_;
     int rect_cat_pub_intervals_;
     int rect_cat_pub_cnt_;
+    int output_width_;
+    int output_height_;
+    int output_fx_;
+    int output_fy_;
 
     Eigen::Matrix3d imu_wrt_base_;  // IMU w.r.t. base_link 的变换矩阵
 

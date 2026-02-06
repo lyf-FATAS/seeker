@@ -8,10 +8,10 @@
   <arg name="output_override" default="true"/>
   <arg name="output_fx" default="320"/>
   <arg name="output_fy" default="320"/>
-  <arg name="output_cx" default="320"/>
-  <arg name="output_cy" default="240"/>
+  <arg name="output_cx" default="0"/>
+  <arg name="output_cy" default="0"/>
   <arg name="output_width" default="640"/>
-  <arg name="output_height" default="480"/>
+  <arg name="output_height" default="1280"/>
   <arg name="process_every_nth_frame" default="1"/>
   <arg name="publish_tf" default="true"/>
   <arg name="respawn" default="false"/>

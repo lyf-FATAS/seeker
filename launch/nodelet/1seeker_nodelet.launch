@@ -11,7 +11,10 @@
   <arg name="publish_gray" default="false"/>
   <arg name="undistort_color" default="true"/>
   <arg name="undistort_gray" default="false"/>
-
+  <arg name="output_width" default="640"/>
+  <arg name="output_height" default="1280"/>
+  <arg name="output_fx" default="320"/>
+  <arg name="output_fy" default="320"/>
   <node pkg="nodelet" type="nodelet" name="seeker_node"
         args="standalone seeker/SeekRosNode"
         output="screen">
@@ -28,5 +31,9 @@
     <param name="publish_gray" value="$(arg publish_gray)"/>
     <param name="undistort_color" value="$(arg undistort_color)"/>
     <param name="undistort_gray" value="$(arg undistort_gray)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
   </node>
 </launch>
