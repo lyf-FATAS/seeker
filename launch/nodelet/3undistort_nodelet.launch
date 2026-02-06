@@ -8,22 +8,34 @@
   <arg name="output_override" default="true"/>
   <arg name="output_fx" default="320"/>
   <arg name="output_fy" default="320"/>
-  <arg name="output_cx" default="320"/>
-  <arg name="output_cy" default="240"/>
+  <arg name="output_cx" default="0"/>
+  <arg name="output_cy" default="0"/>
   <arg name="output_width" default="640"/>
-  <arg name="output_height" default="480"/>
+  <arg name="output_height" default="1280"/>
+  <arg name="profiling_enabled" default="true"/>
+  <arg name="profiling_log_every_n" default="30"/>
+  <arg name="publish_input_camera_info" default="false"/>
+  <arg name="publish_output_camera_info" default="false"/>
+  <arg name="enable_cuda_input_wrappers" default="true"/>
+  <arg name="publish_camera_info_every_n" default="5"/>
+  <arg name="publish_tf_every_n" default="5"/>
+  <arg name="queue_size" default="2"/>
   <arg name="process_every_nth_frame" default="1"/>
   <arg name="publish_tf" default="true"/>
   <arg name="respawn" default="false"/>
   <arg name="config" default="seeker_omni_depth"/>
   <arg name="standalone" default="false"/>
   <arg name="manager" default="seeker_manager"/>
+  <arg name="manager_threads" default="32"/>
   <arg name="use_image_transport" default="false"/>
   <arg name="pub_disparity_img" default="false"/>
   <arg name="pub_disparity" default="false"/>
   <arg name="pub_imu" default="false"/>
   <arg name="time_sync" default="true"/>
   <arg name="img_pub_intervals" default="2"/>
+  <!-- <arg name="stereo_undistort_nodelet_type" default="image_undistort/StereoUndistortNodelet"/> -->
+  <arg name="stereo_undistort_nodelet_type" default="img_preproc/StereoGpuRectifyNodelet"/>
+  <arg name="use_quad_fisheye_unified" default="false"/>
 
   <arg name="stereo_params_camchain" default="$(find seeker)/config/$(arg config)/kalibr_cam_chain.yaml"/>
 
@@ -37,7 +49,7 @@
   <arg unless="$(arg respawn)" name="bond" value="--no-bond"/>
 
   <node unless="$(arg standalone)" pkg="nodelet" type="nodelet" name="$(arg manager_args)" args="manager" output="screen">
-    <param name="num_worker_threads" value="32"/>
+    <param name="num_worker_threads" value="$(arg manager_threads)"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="seeker_node" 
@@ -56,7 +68,44 @@
       <param name="undistort_gray" value="false"/>
   </node>
 
-  <node pkg="nodelet" type="nodelet" name="front_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
+  <node if="$(arg use_quad_fisheye_unified)"
+        pkg="nodelet" type="nodelet" name="quad_stereo_undistort"
+        args="$(arg standalone_args) img_preproc/QuadStereoGpuRectifyNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)"
+        output="screen">
+    <param name="publish_tf" value="$(arg publish_tf)"/>
+    <param name="input_camera_info_from_ros_params" value="true"/>
+    <param name="front_left_camera_name" value="$(arg front_left_camera_name)"/>
+    <param name="front_right_camera_name" value="$(arg front_right_camera_name)"/>
+    <param name="back_right_camera_name" value="$(arg back_right_camera_name)"/>
+    <param name="back_left_camera_name" value="$(arg back_left_camera_name)"/>
+    <param name="scale" value="$(arg scale)"/>
+    <param name="output_override" value="$(arg output_override)"/>
+    <param name="output_fx" value="$(arg output_fx)"/>
+    <param name="output_fy" value="$(arg output_fy)"/>
+    <param name="output_cx" value="$(arg output_cx)"/>
+    <param name="output_cy" value="$(arg output_cy)"/>
+    <param name="output_width" value="$(arg output_width)"/>
+    <param name="output_height" value="$(arg output_height)"/>
+    <param name="profiling_enabled" value="$(arg profiling_enabled)"/>
+    <param name="profiling_log_every_n" value="$(arg profiling_log_every_n)"/>
+    <param name="publish_input_camera_info" value="$(arg publish_input_camera_info)"/>
+    <param name="publish_output_camera_info" value="$(arg publish_output_camera_info)"/>
+    <param name="enable_cuda_input_wrappers" value="$(arg enable_cuda_input_wrappers)"/>
+    <param name="publish_camera_info_every_n" value="$(arg publish_camera_info_every_n)"/>
+    <param name="publish_tf_every_n" value="$(arg publish_tf_every_n)"/>
+    <param name="queue_size" value="$(arg queue_size)"/>
+    <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
+    <rosparam file="$(arg stereo_params_camchain)"/>
+
+    <remap from="raw/cam0/image" to="/fisheye/left/image_raw"/>
+    <remap from="raw/cam1/image" to="/fisheye/right/image_raw"/>
+    <remap from="raw/cam2/image" to="/fisheye/bright/image_raw"/>
+    <remap from="raw/cam3/image" to="/fisheye/bleft/image_raw"/>
+  </node>
+
+  <group unless="$(arg use_quad_fisheye_unified)">
+
+  <node pkg="nodelet" type="nodelet" name="front_stereo_undistort" args="$(arg standalone_args) $(arg stereo_undistort_nodelet_type) $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
     <param name="publish_tf" value = "$(arg publish_tf)"/>
     <param name="input_camera_info_from_ros_params" value = "true"/>
     <param name="first_camera_namespace" value="$(arg front_left_camera_name)"/>
@@ -69,6 +118,8 @@
     <param name="output_cy" value="$(arg output_cy)"/>
     <param name="output_width" value="$(arg output_width)"/>
     <param name="output_height" value="$(arg output_height)"/>
+    <param name="profiling_enabled" value="$(arg profiling_enabled)"/>
+    <param name="profiling_log_every_n" value="$(arg profiling_log_every_n)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -85,7 +136,7 @@
     <remap from="rect/second/image" to="/front/right/image_raw"/>
   </node>
 
-  <node pkg="nodelet" type="nodelet" name="right_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
+  <node pkg="nodelet" type="nodelet" name="right_stereo_undistort" args="$(arg standalone_args) $(arg stereo_undistort_nodelet_type) $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
     <param name="publish_tf" value = "$(arg publish_tf)"/>
     <param name="input_camera_info_from_ros_params" value = "true"/>
     <param name="first_camera_namespace" value="$(arg front_right_camera_name)"/>
@@ -98,6 +149,8 @@
     <param name="output_cy" value="$(arg output_cy)"/>
     <param name="output_width" value="$(arg output_width)"/>
     <param name="output_height" value="$(arg output_height)"/>
+    <param name="profiling_enabled" value="$(arg profiling_enabled)"/>
+    <param name="profiling_log_every_n" value="$(arg profiling_log_every_n)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -114,7 +167,7 @@
     <remap from="rect/second/image" to="/right/right/image_raw"/>
   </node>
 
-  <node pkg="nodelet" type="nodelet" name="left_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
+  <node pkg="nodelet" type="nodelet" name="left_stereo_undistort" args="$(arg standalone_args) $(arg stereo_undistort_nodelet_type) $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
     <param name="publish_tf" value = "$(arg publish_tf)"/>
     <param name="input_camera_info_from_ros_params" value = "true"/>
     <param name="first_camera_namespace" value="$(arg back_left_camera_name)"/>
@@ -127,6 +180,8 @@
     <param name="output_cy" value="$(arg output_cy)"/>
     <param name="output_width" value="$(arg output_width)"/>
     <param name="output_height" value="$(arg output_height)"/>
+    <param name="profiling_enabled" value="$(arg profiling_enabled)"/>
+    <param name="profiling_log_every_n" value="$(arg profiling_log_every_n)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -143,7 +198,7 @@
     <remap from="rect/second/image" to="/left/right/image_raw"/>
   </node>
 
-  <node pkg="nodelet" type="nodelet" name="back_stereo_undistort" args="$(arg standalone_args) image_undistort/StereoUndistortNodelet $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
+  <node pkg="nodelet" type="nodelet" name="back_stereo_undistort" args="$(arg standalone_args) $(arg stereo_undistort_nodelet_type) $(arg manager_args) $(arg bond) respawn=$(arg respawn)" output="screen">
     <param name="publish_tf" value = "$(arg publish_tf)"/>
     <param name="input_camera_info_from_ros_params" value = "true"/>
     <param name="first_camera_namespace" value="$(arg back_right_camera_name)"/>
@@ -156,6 +211,8 @@
     <param name="output_cy" value="$(arg output_cy)"/>
     <param name="output_width" value="$(arg output_width)"/>
     <param name="output_height" value="$(arg output_height)"/>
+    <param name="profiling_enabled" value="$(arg profiling_enabled)"/>
+    <param name="profiling_log_every_n" value="$(arg profiling_log_every_n)"/>
     <param name="process_every_nth_frame" value="$(arg process_every_nth_frame)"/>
     <rosparam file="$(arg stereo_params_camchain)"/>
 
@@ -171,5 +228,7 @@
     <remap from="rect/first/image" to="/back/left/image_raw"/>
     <remap from="rect/second/image" to="/back/right/image_raw"/>
   </node>
+
+  </group>
 
 </launch>
