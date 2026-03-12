@@ -14,37 +14,37 @@ def inv_T(T):
     t = T[:3, 3]
     R_inv = np.linalg.inv(R)
     t_inv = np.dot(-R_inv, t)
-    T_inv = np.mat(np.zeros((4, 4)))
+    T_inv = np.asmatrix(np.zeros((4, 4)))
     T_inv[:3, :3] = R_inv
     T_inv[:3, 3] = t_inv
     T_inv[3, 3] = 1
     return T_inv
 
 def getcam0_Tcn_cm1(datain, cam_index_max):
-    Tcam0_cncnm1 = np.mat(np.eye(4), dtype=np.float64)
+    Tcam0_cncnm1 = np.asmatrix(np.eye(4), dtype=np.float64)
     for i in range(1, cam_index_max+1):
-        T_cn_cnm1 = np.mat(np.resize(np.array(datain['cam'+str(i)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
+        T_cn_cnm1 = np.asmatrix(np.resize(np.array(datain['cam'+str(i)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
         Tcam0_cncnm1 = Tcam0_cncnm1.dot(inv_T(T_cn_cnm1))
     print("Tcam0_cncnm1=")
     print(Tcam0_cncnm1)
     return Tcam0_cncnm1
-    # Rt0 = np.mat(np.resize(np.array(cam0T_cam_imu), (4, 4)))
+    # Rt0 = np.asmatrix(np.resize(np.array(cam0T_cam_imu), (4, 4)))
     # datain[camright_namespace]['T_cam_imu']
 
 def get_T_cam_imu(datain, cam_index):
     if 'cam' + str(cam_index) in datain:
         if 'T_cam_imu' in datain['cam'+str(cam_index)]:
             T_cam_imu = datain['cam'+str(cam_index)]['T_cam_imu']
-            Rt = np.mat(np.resize(np.array(T_cam_imu, dtype=np.float64), (4, 4)))
+            Rt = np.asmatrix(np.resize(np.array(T_cam_imu, dtype=np.float64), (4, 4)))
             return Rt
         else :
             if 'cam' + str(cam_index - 1) in datain:
                 Rt_pre = get_T_cam_imu(datain, cam_index - 1)
-                T_cn_cnm1 = np.mat(np.resize(np.array(datain['cam'+str(cam_index)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
+                T_cn_cnm1 = np.asmatrix(np.resize(np.array(datain['cam'+str(cam_index)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
                 Rt = T_cn_cnm1.dot(Rt_pre)
                 return Rt
     print("error")
-    return np.mat(np.eye(4), dtype=np.float64)
+    return np.asmatrix(np.eye(4), dtype=np.float64)
 
 def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, frame, out_left_namespace, out_right_namespace):
     # 处理cam0数据
@@ -58,7 +58,7 @@ def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, fr
     y = np.cross(np.eye(4, dtype=np.float64)[0:3, 2], x)
     z = np.cross(x, y)
 
-    T = np.mat(np.eye(4))
+    T = np.asmatrix(np.eye(4))
     T[0:3,0] = np.resize(x / np.linalg.norm(x), (3,1))
     T[0:3,1] = np.resize(y / np.linalg.norm(y), (3,1))
     T[0:3,2] = np.resize(z / np.linalg.norm(z), (3,1))
@@ -83,7 +83,7 @@ def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, fr
     cam1T_cn_cnm1_ = Rtr.dot(inv_T(Rtl))
     print("cam1T_cn_cnm1_\n", cam1T_cn_cnm1_)
 
-    Rt_cnm1 = np.mat(np.eye(4))
+    Rt_cnm1 = np.asmatrix(np.eye(4))
     Rt_cnm1[0,3] = -np.linalg.norm(cam1T_cn_cnm1[0:3,3]) #-np.linalg.norm(Rt0[0:3,3]-Rt1[0:3,3])
     #print( Rt_cnm1)
     Rtr = Rt_cnm1.dot(Rtl)
@@ -92,7 +92,7 @@ def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, fr
 
 
 
-    #Rt_cnm1 = np.mat(np.eye(4))
+    #Rt_cnm1 = np.asmatrix(np.eye(4))
     #Rt_cnm1[0,3] = -np.linalg.norm(cam1T_cn_cnm1[0:3,3]) #-np.linalg.norm(Rt0[0:3,3]-Rt1[0:3,3])
     ##print( Rt_cnm1)
     #Rtr = Rt_cnm1.dot(Rtl)

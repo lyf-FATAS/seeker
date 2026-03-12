@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.spatial.transform import Rotation as R
 from enum import Enum, auto
 from ctypes import *
 import sys
@@ -15,37 +14,37 @@ def inv_T(T):
     t = T[:3, 3]
     R_inv = np.linalg.inv(R)
     t_inv = np.dot(-R_inv, t)
-    T_inv = np.mat(np.zeros((4, 4)))
+    T_inv = np.asmatrix(np.zeros((4, 4)))
     T_inv[:3, :3] = R_inv
     T_inv[:3, 3] = t_inv
     T_inv[3, 3] = 1
     return T_inv
 
 def getcam0_Tcn_cm1(datain, cam_index_max):
-    Tcam0_cncnm1 = np.mat(np.eye(4), dtype=np.float64)
+    Tcam0_cncnm1 = np.asmatrix(np.eye(4), dtype=np.float64)
     for i in range(1, cam_index_max+1):
-        T_cn_cnm1 = np.mat(np.resize(np.array(datain['cam'+str(i)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
+        T_cn_cnm1 = np.asmatrix(np.resize(np.array(datain['cam'+str(i)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
         Tcam0_cncnm1 = Tcam0_cncnm1.dot(inv_T(T_cn_cnm1))
     print("Tcam0_cncnm1=")
     print(Tcam0_cncnm1)
     return Tcam0_cncnm1
-    # Rt0 = np.mat(np.resize(np.array(cam0T_cam_imu), (4, 4)))
+    # Rt0 = np.asmatrix(np.resize(np.array(cam0T_cam_imu), (4, 4)))
     # datain[camright_namespace]['T_cam_imu']
 
 def get_T_cam_imu(datain, cam_index):
     if 'cam' + str(cam_index) in datain:
         if 'T_cam_imu' in datain['cam'+str(cam_index)]:
             T_cam_imu = datain['cam'+str(cam_index)]['T_cam_imu']
-            Rt = np.mat(np.resize(np.array(T_cam_imu, dtype=np.float64), (4, 4)))
+            Rt = np.asmatrix(np.resize(np.array(T_cam_imu, dtype=np.float64), (4, 4)))
             return Rt
         else :
             if 'cam' + str(cam_index - 1) in datain:
                 Rt_pre = get_T_cam_imu(datain, cam_index - 1)
-                T_cn_cnm1 = np.mat(np.resize(np.array(datain['cam'+str(cam_index)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
+                T_cn_cnm1 = np.asmatrix(np.resize(np.array(datain['cam'+str(cam_index)]['T_cn_cnm1'], dtype=np.float64), (4, 4)))
                 Rt = T_cn_cnm1.dot(Rt_pre)
                 return Rt
     print("error")
-    return np.mat(np.eye(4), dtype=np.float64)
+    return np.asmatrix(np.eye(4), dtype=np.float64)
 
 # 定义枚举类型
 class CameraModels(Enum):
@@ -158,11 +157,40 @@ class DeviceParam(Structure):
 
 def rotation_matrix_to_quaternion(matrix):
     """将4x4齐次矩阵转换为四元数和平移向量"""
-    rot = matrix[:3, :3]
-    t = matrix[:3, 3]
-    r = R.from_matrix(rot)
-    quat = r.as_quat()  # 返回格式 [x, y, z, w]
-    return quat[3], quat[0], quat[1], quat[2], t[0], t[1], t[2]
+    rot = np.asarray(matrix[:3, :3], dtype=np.float64)
+    t = np.asarray(matrix[:3, 3], dtype=np.float64).reshape(3,)
+
+    trace = np.trace(rot)
+    if trace > 0.0:
+        s = np.sqrt(trace + 1.0) * 2.0
+        qw = 0.25 * s
+        qx = (rot[2, 1] - rot[1, 2]) / s
+        qy = (rot[0, 2] - rot[2, 0]) / s
+        qz = (rot[1, 0] - rot[0, 1]) / s
+    elif rot[0, 0] > rot[1, 1] and rot[0, 0] > rot[2, 2]:
+        s = np.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2]) * 2.0
+        qw = (rot[2, 1] - rot[1, 2]) / s
+        qx = 0.25 * s
+        qy = (rot[0, 1] + rot[1, 0]) / s
+        qz = (rot[0, 2] + rot[2, 0]) / s
+    elif rot[1, 1] > rot[2, 2]:
+        s = np.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2]) * 2.0
+        qw = (rot[0, 2] - rot[2, 0]) / s
+        qx = (rot[0, 1] + rot[1, 0]) / s
+        qy = 0.25 * s
+        qz = (rot[1, 2] + rot[2, 1]) / s
+    else:
+        s = np.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1]) * 2.0
+        qw = (rot[1, 0] - rot[0, 1]) / s
+        qx = (rot[0, 2] + rot[2, 0]) / s
+        qy = (rot[1, 2] + rot[2, 1]) / s
+        qz = 0.25 * s
+
+    norm = np.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
+    if norm > 0.0:
+        qw, qx, qy, qz = qw / norm, qx / norm, qy / norm, qz / norm
+
+    return qw, qx, qy, qz, t[0], t[1], t[2]
 
 def set_camera_info(cam_data, param_cam):
     """将字典数据填充到ParamCamCali结构体"""
@@ -296,4 +324,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
