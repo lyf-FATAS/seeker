@@ -3,10 +3,18 @@ import ruamel.yaml
 import numpy as np
 import sys
 import os
+import xml.etree.ElementTree as ET
 
 ruamelyaml = ruamel.yaml.YAML()
 ruamelyaml.default_flow_style = None
 np.set_printoptions(suppress =True)
+
+DEFAULT_OUTPUT_CONFIG = {
+    "width": 640,
+    "height": 1280,
+    "fx": 320.0,
+    "fy": 320.0,
+}
 
 def inv_T(T):
     # 求逆操作并保持左下三个元素为0
@@ -46,7 +54,51 @@ def get_T_cam_imu(datain, cam_index):
     print("error")
     return np.asmatrix(np.eye(4), dtype=np.float64)
 
-def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, frame, out_left_namespace, out_right_namespace):
+def load_output_config():
+    launch_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "launch",
+        "nodelet",
+        "1seeker_nodelet.launch",
+    )
+    output_config = DEFAULT_OUTPUT_CONFIG.copy()
+
+    try:
+        root = ET.parse(launch_path).getroot()
+    except (OSError, ET.ParseError) as exc:
+        print(f"warn: failed to parse {launch_path}, using defaults: {exc}")
+        return output_config
+
+    arg_defaults = {}
+    for arg in root.findall("arg"):
+        name = arg.get("name")
+        default = arg.get("default")
+        if name is not None and default is not None:
+            arg_defaults[name] = default
+
+    launch_fields = {
+        "output_width": ("width", int),
+        "output_height": ("height", int),
+        "output_fx": ("fx", float),
+        "output_fy": ("fy", float),
+    }
+
+    for launch_name, (config_name, caster) in launch_fields.items():
+        raw_value = arg_defaults.get(launch_name)
+        if raw_value is None:
+            continue
+        try:
+            output_config[config_name] = caster(raw_value)
+        except ValueError:
+            print(
+                f"warn: invalid {launch_name}={raw_value!r} in {launch_path}, "
+                f"using default {output_config[config_name]!r}"
+            )
+
+    return output_config
+
+def generatestereoinfo(datain, dataout, output_config, camleft_namespace, camright_namespace, frame, out_left_namespace, out_right_namespace):
     # 处理cam0数据
     Rt0 = get_T_cam_imu(datain, camleft_namespace)
     Rt1 = get_T_cam_imu(datain, camright_namespace)
@@ -109,8 +161,16 @@ def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, fr
     dataout[out_left_namespace]['camera_model'] = 'pinhole'
     dataout[out_left_namespace]['distortion_coeffs'] = [0, 0, 0, 0]
     dataout[out_left_namespace]['distortion_model']= 'radtan'
-    dataout[out_left_namespace]['intrinsics']= [320.0,320.0,640.0/2.0,480.0/2.0]
-    dataout[out_left_namespace]['resolution']= [640, 480]
+    dataout[out_left_namespace]['intrinsics']= [
+        output_config["fx"],
+        output_config["fy"],
+        output_config["width"] / 2.0,
+        output_config["height"] / 2.0,
+    ]
+    dataout[out_left_namespace]['resolution']= [
+        output_config["width"],
+        output_config["height"],
+    ]
     dataout[out_left_namespace]['rostopic'] = '/' + frame + '/left/image_raw'
     dataout[out_left_namespace]['timeshift_cam_imu'] = 0.0
     dataout[out_left_namespace]['frame'] = 'cam' + str(camleft_namespace)+'r'
@@ -122,8 +182,16 @@ def generatestereoinfo(datain, dataout,camleft_namespace, camright_namespace, fr
     dataout[out_right_namespace]['camera_model'] = 'pinhole'
     dataout[out_right_namespace]['distortion_coeffs'] = [0,0,0,0]
     dataout[out_right_namespace]['distortion_model']= 'radtan'
-    dataout[out_right_namespace]['intrinsics']= [320.0,320.0,640.0/2.0,480.0/2.0]
-    dataout[out_right_namespace]['resolution']= [640, 480]
+    dataout[out_right_namespace]['intrinsics']= [
+        output_config["fx"],
+        output_config["fy"],
+        output_config["width"] / 2.0,
+        output_config["height"] / 2.0,
+    ]
+    dataout[out_right_namespace]['resolution']= [
+        output_config["width"],
+        output_config["height"],
+    ]
     dataout[out_right_namespace]['rostopic'] = '/' + frame + '/right/image_raw'
     dataout[out_right_namespace]['timeshift_cam_imu'] = 0.0
     dataout[out_right_namespace]['frame'] = 'cam' + str(camright_namespace)+'l'
@@ -138,7 +206,9 @@ def main():
     with open(args[1], 'r') as f:
         datain = yaml.load(f, Loader=yaml.FullLoader)
         dataout=dict()
+        output_config = load_output_config()
         print(datain)
+        print(f"output_config={output_config}")
 
         if 'T_cn_cnm1' not in datain['cam0']:
             datain['cam0']['T_cn_cnm1'] = getcam0_Tcn_cm1(datain, 3).tolist()
@@ -150,10 +220,10 @@ def main():
         with open('kalibr_cam_chain.yaml', 'w+') as g:
             ruamelyaml.dump(datain, g)
 
-        generatestereoinfo(datain, dataout, 0, 1, 'front', 'cam0', 'cam1')
-        generatestereoinfo(datain, dataout, 1, 2, 'right', 'cam2', 'cam3')
-        generatestereoinfo(datain, dataout, 2, 3, 'back', 'cam4', 'cam5')
-        generatestereoinfo(datain, dataout, 3, 0, 'left', 'cam6', 'cam7')
+        generatestereoinfo(datain, dataout, output_config, 0, 1, 'front', 'cam0', 'cam1')
+        generatestereoinfo(datain, dataout, output_config, 1, 2, 'right', 'cam2', 'cam3')
+        generatestereoinfo(datain, dataout, output_config, 2, 3, 'back', 'cam4', 'cam5')
+        generatestereoinfo(datain, dataout, output_config, 3, 0, 'left', 'cam6', 'cam7')
 
         with open('kalibr_imucam_chain.yaml', 'w+') as g:
             ruamelyaml.dump(dataout, g)
